@@ -1,0 +1,18 @@
+[
+  {
+    "name": "1-select.jpg",
+    "query": "?shot=select&seed=1"
+  },
+  {
+    "name": "2-buildings.jpg",
+    "query": "?shot=buildings&seed=1"
+  },
+  {
+    "name": "3-play.jpg",
+    "query": "?shot=play&seed=1"
+  },
+  {
+    "name": "4-achievements.jpg",
+    "query": "?shot=achievements&seed=8"
+  }
+]
