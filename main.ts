@@ -16,9 +16,35 @@ import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-game.ts';
+import { createHash } from 'node:crypto';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+
+// Walk a copied tree and total its files and bytes, for the build summary.
+function treeTotals(root) {
+  let files = 0;
+  let bytes = 0;
+  const walk = (dir) => {
+    for (const name of readdirSync(dir)) {
+      const path = join(dir, name);
+      const info = statSync(path);
+      if (info.isDirectory()) walk(path);
+      else { files += 1; bytes += info.size; }
+    }
+  };
+  if (existsSync(root)) walk(root);
+  return { files, bytes };
+}
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+
+// Build guard: the entry is not shippable without its entry point, so fail
+// loudly here instead of producing an /output that looks complete but has
+// no game to open.
+const entryPoint = join(here, 'game', 'index.html');
+if (!existsSync(entryPoint)) {
+  throw new Error(`Tahta Ember build failed: missing entry point ${entryPoint}`);
+}
 
 mkdirSync(out, { recursive: true });
 cpSync(join(here, 'game'), join(out, 'game'), { recursive: true });
@@ -39,3 +65,11 @@ writeFileSync(
     game_path_max_bytes: 1000,
   }),
 );
+
+// Build summary: what the grader will receive, and the dossier's fingerprint.
+const gameTotals = treeTotals(join(out, 'game'));
+const shotTotals = treeTotals(join(out, 'screenshots'));
+const dossierBytes = readFileSync(join(out, 'dossier.json'));
+const dossierSha = createHash('sha256').update(dossierBytes).digest('hex');
+console.log(`Tahta Ember build complete: ${gameTotals.files} game files (${gameTotals.bytes} bytes) + ${shotTotals.files} screenshots (${shotTotals.bytes} bytes)`);
+console.log(`dossier.json sha256: ${dossierSha}`);
